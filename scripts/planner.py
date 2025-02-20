@@ -187,18 +187,21 @@ class MonteCarloTreeSearch:
         MonteCarloTreeSearch.WEIGHT_VELOCITY = cfg['weight_velocity']
 
 
+# KLevelPlanner用于车辆交互决策的规划器类。它通过level-k进行预测和仿真，生成车辆的最优动作和预期轨迹。
 class KLevelPlanner:
     def __init__(self, cfg: dict = {}):
-        self.steps = cfg['max_step']
-        self.dt = cfg['delta_t']
+        self.steps = cfg['max_step']    # 配置文件中为 8
+        self.dt = cfg['delta_t']        # 配置文件中为 0.25
         self.config = cfg
 
+    # 输入: ego 自车(单个); 他车 others(list多个)。 输出: 当前待执行最优动作; 预期轨迹。
     def planning(self, ego: VehicleBase, others: List[VehicleBase]) -> Tuple[utils.Action, StateList]:
-        other_prediction = self.get_prediction(ego, others)
-        actions, traj = self.forward_simulate(ego, others, other_prediction)
+        other_prediction = self.get_prediction(ego, others) # 获取其他车辆的预测
+        actions, traj = self.forward_simulate(ego, others, other_prediction) # 前向仿真，生成最优动作和预期轨迹
 
         return actions[0], traj
 
+    # 
     def forward_simulate(self, ego: VehicleBase, others: List[VehicleBase],
                          traj: List[StateList]) -> Tuple[List[utils.Action], StateList]:
         mcts = MonteCarloTreeSearch(ego, others, traj, self.config)
@@ -221,6 +224,7 @@ class KLevelPlanner:
 
         return actions, expected_traj
 
+    # 输入:ego 自车(单个); 他车 others(list多个); 输出:预测列表(每个StateList是一条预测);
     def get_prediction(self, ego: VehicleBase, others: List[VehicleBase]) -> List[StateList]:
         pred_trajectory = []
         pred_trajectory_trans = []

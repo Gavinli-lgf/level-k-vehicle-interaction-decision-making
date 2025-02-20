@@ -28,6 +28,9 @@ LOG_LEVEL_DICT = {"debug": logging.DEBUG, "info": logging.INFO, "warning": loggi
                   "error": logging.ERROR, "critical": logging.CRITICAL}
 
 
+"""
+输入: rounds_num: 仿真轮次; config_path: 配置参数文件路径(./config/unprotected_left_turn.yaml);
+"""
 def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_fig:bool) -> None:
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
@@ -41,29 +44,33 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
     max_simulation_time = config['max_simulation_time']
     vehicle_draw_style = config['vehicle_display_style']
 
-    # initialize
+    # 1.initialize(初始化车辆与算法模块:vehicles, MonteCarloTreeSearch, Node)
     VehicleBase.initialize(env, 5, 2, 8, 2.4)
     MonteCarloTreeSearch.initialize(config)
     Node.initialize(config['max_step'], MonteCarloTreeSearch.calc_cur_value)
     
+    # 根据unprotected_left_turn.yaml中的配置，初始化vehicles中每个车辆对象
     vehicles = VehicleList()
     for vehicle_name in config["vehicle_list"]:
         vehicle = Vehicle(vehicle_name, config)
         vehicles.append(vehicle)
 
-    succeed_count = 0
-    executor = ProcessPoolExecutor(max_workers = 6)
+    # 2. 执行仿真轮次
+    succeed_count = 0 # 执行成功的计数
+    executor = ProcessPoolExecutor(max_workers = 6) # 进程池(最大进程数为6)
     for iter in range(rounds_num):
+        # 每轮仿真都要重置车辆状态，并打印本轮开始时2辆车的初始状态(x,y,v)
         vehicles.reset()
-
         logging.info(f"\n================== Round {iter} ==================")
         for vehicle in vehicles:
             logging.info(f"{vehicle.name} >>> init_x: {vehicle.state.x:.2f}, "
                          f"init_y: {vehicle.state.y:.2f}, init_v: {vehicle.state.v:.2f}")
 
+        # 进入仿真循环
         timestamp = 0.0
         round_start_time = time.time()
         while True:
+            # 如果所有车辆都到达目标，记录成功信息并增加成功计数。
             if vehicles.is_all_get_target:
                 round_elapsed_time = time.time() - round_start_time
                 logging.info(f"Round {iter} successed, "
@@ -72,6 +79,7 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
                 succeed_count += 1
                 break
 
+            # 如果发生碰撞或超过最大仿真时间，记录失败信息。
             if vehicles.is_any_collision or timestamp > max_simulation_time:
                 round_elapsed_time = time.time() - round_start_time
                 logging.info(f"Round {iter} failed, "
@@ -81,21 +89,25 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
 
             future_list: List[Future] = []
             start_time = time.time()
-
+            # 提交每辆车的执行任务到进程池，并获取结果。
             for vehicle in vehicles:
                 future = executor.submit(vehicle.excute, vehicles.exclude(vehicle))
                 future_list.append(future)
 
+            # 更新每辆车的当前动作和预期轨迹。
             for vehicle, future in zip(vehicles, future_list):
                 vehicle.cur_action, vehicle.excepted_traj = future.result()
+                # 如果车辆未到达目标，更新车辆状态并记录轨迹。
                 if not vehicle.is_get_target:
                     vehicle.state = \
                         kinematic_propagate(vehicle.state, vehicle.cur_action.value, delta_t)
                     vehicle.footprint.append(vehicle.state)
 
+            # 记录仿真步长的时间消耗。
             elapsed_time = time.time() - start_time
             logging.debug(f"simulation time {timestamp:.3f} step cost {elapsed_time:.6f} second")
 
+            # 如果使用了动图，就要绘制当前环境和车辆状态(先清除当前绘图，再绘制每辆车的预期轨迹,目标位置,当前速度和动作;更新时间戳.)
             if not no_animation:
                 plt.cla()
                 env.draw_env()
@@ -116,6 +128,7 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
                 plt.pause(0.01)
             timestamp += delta_t
 
+        # 当前round结束后，绘制最终环境和车辆状态(每辆车的整条轨迹和最终状态)
         plt.cla()
         env.draw_env()
         for vehicle in vehicles:
@@ -132,12 +145,14 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
         if save_fig:
             plt.savefig(os.path.join(save_path, f"round_{iter}.svg"), format='svg', dpi=600)
 
+    # 所有rounds都结束后，打印结束信息
     logging.info("\n=========================================")
     logging.info(f"Experiment success {succeed_count}/{rounds_num}"
                  f"({100*succeed_count/rounds_num:.2f}%) rounds.")
 
 
 if __name__ == "__main__":
+    # 1.解析输入形参，并设置各种命令行参数
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('--rounds', '-r', type=int, default=5, help='')
     parser.add_argument('--output_path', '-o', type=str, default=None, help='')
@@ -177,4 +192,5 @@ if __name__ == "__main__":
 
     project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+    # 2. 调用run()进入仿真主程序
     run(args.rounds, config_file_path, result_save_path, args.no_animation, args.save_fig)
