@@ -99,7 +99,7 @@ class Vehicle(VehicleBase):
         else:
             logging.CRITICAL("set_target error, the target range must >= -25 and <= 25 !")
 
-    # 车辆执行一次完整level-k规划，返回当前动作和预期轨迹。
+    # 车辆执行一次完整level-k规划，返回当前该执行的最优动作和预期轨迹。
     def excute(self, others: List[VehicleBase]) -> Tuple[utils.Action, utils.StateList]:
         if self.is_get_target:
             # 车辆已到达终点

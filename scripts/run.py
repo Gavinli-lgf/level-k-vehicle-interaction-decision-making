@@ -47,7 +47,8 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
     # 1.initialize(初始化车辆与算法模块:vehicles, MonteCarloTreeSearch, Node)
     VehicleBase.initialize(env, 5, 2, 8, 2.4)
     MonteCarloTreeSearch.initialize(config)
-    Node.initialize(config['max_step'], MonteCarloTreeSearch.calc_cur_value)
+    #用MCTS中的stage reward function初始化Node中的状态价值计算函数的回调函数
+    Node.initialize(config['max_step'], MonteCarloTreeSearch.calc_cur_value)    
     
     # 根据unprotected_left_turn.yaml中的配置，初始化vehicles中每个车辆对象
     vehicles = VehicleList()
@@ -89,15 +90,15 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
 
             future_list: List[Future] = []
             start_time = time.time()
-            # 提交每辆车的执行任务到进程池，并获取结果。
+            # 提交每辆车的执行任务到进程池，并获取结果。(每个进程中实际通过 vehicle.excute 执行具体的MCTS规划过程)
             for vehicle in vehicles:
                 future = executor.submit(vehicle.excute, vehicles.exclude(vehicle))
                 future_list.append(future)
 
             # 更新每辆车的当前动作和预期轨迹。
             for vehicle, future in zip(vehicles, future_list):
-                vehicle.cur_action, vehicle.excepted_traj = future.result()
-                # 如果车辆未到达目标，更新车辆状态并记录轨迹。
+                vehicle.cur_action, vehicle.excepted_traj = future.result() # 获取 vehicle.excute()的返回结果
+                # 如果车辆未到达目标，由状态转移方程更新车辆状态并记录轨迹。
                 if not vehicle.is_get_target:
                     vehicle.state = \
                         kinematic_propagate(vehicle.state, vehicle.cur_action.value, delta_t)

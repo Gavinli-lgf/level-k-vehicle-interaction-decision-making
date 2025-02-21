@@ -16,6 +16,7 @@ class EnvCrossroads:
         self.map_size = 25
         self.lanewidth = 4
 
+        # 记录地图中的道路边界与地图边界
         self.rect = [
             [[-size, -size, -2*lanewidth, -lanewidth, -lanewidth, -size],
                 [-size, -lanewidth, -lanewidth, -2*lanewidth, -size, -size]],
@@ -27,6 +28,7 @@ class EnvCrossroads:
                 [size, lanewidth, lanewidth, 2*lanewidth, size, size]]
         ]
 
+        # 记录地图中的道路中心线
         self.laneline = [
             [[0, 0], [-size, -2*lanewidth]],
             [[0, 0], [size, 2*lanewidth]],
@@ -34,6 +36,7 @@ class EnvCrossroads:
             [[size, 2*lanewidth], [0, 0]]
         ]
 
+    # 地图中的道路外区域"gray灰色"; 道路边界"k黑色"; 道路中心线"orange 橘黄色"
     def draw_env(self):
         for i in range(len(self.rect)):
             plt.fill(*self.rect[i], color='gray', alpha=0.5)
