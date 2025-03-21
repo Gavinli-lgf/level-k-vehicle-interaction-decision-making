@@ -39,11 +39,11 @@ class Vehicle(VehicleBase):
         super().__init__(name)
         self.vehicle_box2d: np.ndarray = VehicleBase.get_box2d(self.state)
         self.safezone: np.ndarray = VehicleBase.get_safezone(self.state)
-        self.target: utils.State = utils.State(0, 0, 0, 0)
+        self.target: utils.State = utils.State(0, 0, 0, 0)      #该agent的目标状态(x,y,yaw,v)
         self.have_got_target: bool = False                      #是否到达终点
         self.dt: float = cfg['delta_t']
         self.cur_action: Optional[utils.Action] = None          #当前动作
-        self.excepted_traj: Optional[utils.StateList] = None    #预期轨迹
+        self.excepted_traj: Optional[utils.StateList] = None    #预期轨迹(.to_list()之后分别是x,y,yaw,v这4个list)
         self.footprint: List[utils.State] = []                  #历史轨迹
 
         # 从配置文件中读取车辆信息并初始化相关属性。
@@ -99,7 +99,11 @@ class Vehicle(VehicleBase):
         else:
             logging.CRITICAL("set_target error, the target range must >= -25 and <= 25 !")
 
-    # 车辆执行一次完整level-k规划，返回当前该执行的最优动作和预期轨迹。
+    """ 
+    输入: others 表示其他车辆的列表(除了当前agent外其他所有 agents);
+    输出: act 当前agent的最优动作序列; excepted_traj 对应最优轨迹(即预测轨迹)。
+    功能: 车辆执行一次完整level-k规划, 返回当前该执行的最优动作和预期轨迹。
+    """
     def excute(self, others: List[VehicleBase]) -> Tuple[utils.Action, utils.StateList]:
         if self.is_get_target:
             # 车辆已到达终点

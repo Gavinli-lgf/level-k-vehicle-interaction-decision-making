@@ -204,7 +204,7 @@ def has_overlap(box2d_0, box2d_1) -> bool:
     return True
 
 
-# 车辆的状态转移方程(并对yaw限幅(0~2*pi),v限幅(-20~20))
+# 状态转移方程(只取第1个输入，计算下一个状态。并对yaw限幅(0~2*pi),v限幅(-20~20))
 def kinematic_propagate(state: State, act: List[float], dt: float) -> State:
     next_state = State()
     acc, omega = act[0], act[1]

@@ -45,12 +45,12 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
     vehicle_draw_style = config['vehicle_display_style']
 
     # 1.initialize(初始化车辆与算法模块:vehicles, MonteCarloTreeSearch, Node)
-    VehicleBase.initialize(env, 5, 2, 8, 2.4)
+    VehicleBase.initialize(env, 5, 2, 8, 2.4)   # env, length, width, safe_length, safe_width
     MonteCarloTreeSearch.initialize(config)
     #用MCTS中的stage reward function初始化Node中的状态价值计算函数的回调函数
     Node.initialize(config['max_step'], MonteCarloTreeSearch.calc_cur_value)    
     
-    # 根据unprotected_left_turn.yaml中的配置，初始化vehicles中每个车辆对象
+    # 根据config(*.yaml)，初始化vehicles中每个车辆对象
     vehicles = VehicleList()
     for vehicle_name in config["vehicle_list"]:
         vehicle = Vehicle(vehicle_name, config)
@@ -90,15 +90,18 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
 
             future_list: List[Future] = []
             start_time = time.time()
-            # 提交每辆车的执行任务到进程池，并获取结果。(每个进程中实际通过 vehicle.excute 执行具体的MCTS规划过程)
+            # 提交每辆车的执行任务到进程池,异步执行每个任务,并获取结果。(vehicle.excute 执行具体的MCTS规划过程)
             for vehicle in vehicles:
+                # executor 进程池执行器，用于并行执行任务: vehicle.execute(vehicles.exclude(vehicle))
+                # 返回结果future是对异步任务的状态和结果的封装,可通过 Future.result() 获取最终结果(utils.Action, utils.StateList)
                 future = executor.submit(vehicle.excute, vehicles.exclude(vehicle))
                 future_list.append(future)
 
-            # 更新每辆车的当前动作和预期轨迹。
+            # 更新每辆车的当前动作和预期轨迹。()
             for vehicle, future in zip(vehicles, future_list):
-                vehicle.cur_action, vehicle.excepted_traj = future.result() # 获取 vehicle.excute()的返回结果
-                # 如果车辆未到达目标，由状态转移方程更新车辆状态并记录轨迹。
+                # 获取 vehicle.excute()的返回结果(utils.Action, utils.StateList)
+                vehicle.cur_action, vehicle.excepted_traj = future.result() 
+                # 如果车辆未到达目标，应用最优action序列中的第1个，并由状态转移方程计算车辆下一个状态。
                 if not vehicle.is_get_target:
                     vehicle.state = \
                         kinematic_propagate(vehicle.state, vehicle.cur_action.value, delta_t)
@@ -115,8 +118,8 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
                 for vehicle in vehicles:
                     excepted_traj = vehicle.excepted_traj.to_list()
                     vehicle.draw_vehicle(vehicle_draw_style)
-                    plt.plot(vehicle.target.x, vehicle.target.y, marker='x', color=vehicle.color)
-                    plt.plot(excepted_traj[0], excepted_traj[1], color=vehicle.color, linewidth=1)
+                    plt.plot(vehicle.target.x, vehicle.target.y, marker='x', color=vehicle.color)   # 用'x'表示每个agent的终点状态
+                    plt.plot(excepted_traj[0], excepted_traj[1], color=vehicle.color, linewidth=1)  # 使用线条绘制每个agent的预期轨迹。
                     plt.text(vehicle.vis_text_pos.x, vehicle.vis_text_pos.y + 3, f"level {vehicle.level}", color=vehicle.color)
                     plt.text(vehicle.vis_text_pos.x, vehicle.vis_text_pos.y,
                              f"v = {vehicle.state.v:.2f} m/s", color=vehicle.color)
@@ -129,7 +132,7 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
                 plt.pause(0.01)
             timestamp += delta_t
 
-        # 当前round结束后，绘制最终环境和车辆状态(每辆车的整条轨迹和最终状态)
+        # 每轮round结束后，绘制所有车辆的历史轨迹
         plt.cla()
         env.draw_env()
         for vehicle in vehicles:
