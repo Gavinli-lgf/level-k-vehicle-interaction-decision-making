@@ -163,13 +163,14 @@ class Node:
     输入: delta_t simulation时间步长; 
          others 所有对手agents在生成此next_node的时间步(也对应待生成node在tree中的层数)的状态(每个other agent一个状态,形成一个list)
     输出: node 生成的next node
-    功能: 从self.state开始随机选择一个动作,生成下一个节点.(与add_child()区别在于,该节点不记录父节点,即不生成树,用于MCTS的Simulation过程)
+    功能: 从self.state开始随机选择一个动作,生成下一个节点,并计算该节点的value值.
+         (next_node()函数用于default policy的simulation阶段,add_child()函数用于tree policy阶段.所以next_node()不记录父节点,即不生成树.)
     """
     def next_node(self, delta_t: float, others: StateList = StateList()) -> "Node":
         next_action = random.choice(ActionList)
         new_state = kinematic_propagate(self.state, next_action.value, delta_t)
         node = Node(new_state, self.cur_level + 1, None, next_action, others, self.goal_pos)
-        Node.calc_value_callback(node, self.value)
+        Node.calc_value_callback(node, self.value)  # 计算node节点的value(simulation阶段的总代价)
 
         return node
 

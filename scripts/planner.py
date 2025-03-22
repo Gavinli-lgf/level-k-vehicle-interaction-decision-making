@@ -137,10 +137,11 @@ class MonteCarloTreeSearch:
 
     """
     输入: node 当前待计算value的节点, 
-         last_node_value node的父节点的value值(该value值是从simulation节点到该节点的总value值,最终用途是MCTS的proppagation);
-    输出: total_reward 即算出的node的value
-    功能: 用于MCTS的simulation阶段每个节点的value值的计算。参照论文中"stage reward function(式3)"的定义。
-          计算从根节点到当前节点总的状态价值, 并返回.
+         last_node_value node父节点的value值(该value值是从simulation节点到该节点的总value值,最终用途是MCTS的proppagation);
+    输出: total_reward 算出的该node的value.(同时也将改结果写入node.value中)
+    功能: 用于MCTS的simulation阶段每个节点的value值计算。参照论文中"stage reward function(式3)"的定义。
+         stage reward function涉及collision,safe dis,off-road,bet line,speed,yaw,decel.
+         (其中collision代价会考虑node与所有其他others是否发生碰撞.)
     """
     @staticmethod
     def calc_cur_value(node: Node, last_node_value: float) -> float:
