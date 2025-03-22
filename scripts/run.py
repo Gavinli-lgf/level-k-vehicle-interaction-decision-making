@@ -88,7 +88,7 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
                              f", actual timecost: {round_elapsed_time:.3f} s")
                 break
 
-            future_list: List[Future] = []
+            future_list: List[Future] = []  # 多进程同时执行多个agents的excute(),因此需要一个list存储每个agent的返回结果(Future)
             start_time = time.time()
             # 提交每辆车的执行任务到进程池,异步执行每个任务,并获取结果。(vehicle.excute 执行具体的MCTS规划过程)
             for vehicle in vehicles:
@@ -98,7 +98,7 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
                 future_list.append(future)
 
             # 更新每辆车的当前动作和预期轨迹。()
-            for vehicle, future in zip(vehicles, future_list):
+            for vehicle, future in zip(vehicles, future_list):  # 将每个agent预期对应的返回结果对应起来,并遍历
                 # 获取 vehicle.excute()的返回结果(utils.Action, utils.StateList)
                 vehicle.cur_action, vehicle.excepted_traj = future.result() 
                 # 如果车辆未到达目标，应用最优action序列中的第1个，并由状态转移方程计算车辆下一个状态。
@@ -130,7 +130,7 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
                 plt.title(f"Round {iter + 1} / {rounds_num}")
                 plt.gca().set_aspect('equal')
                 plt.pause(0.01)
-            timestamp += delta_t
+            timestamp += delta_t    # 每个时间步执行一次
 
         # 每轮round结束后，绘制所有车辆的历史轨迹
         plt.cla()

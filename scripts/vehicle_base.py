@@ -26,8 +26,8 @@ class VehicleBase(ABC):
 
     # 初始化车辆的名称name与状态state
     def __init__(self, name: str):
-        self.name: str = name
-        self.state: State = State()
+        self.name: str = name       # agent名称(与*.yaml文件中vehicle_list中的名称对应)
+        self.state: State = State() # 记录agent当前状态(x,y,yaw,v)
 
     # 输入:目标偏移tar_offset; 输出:车辆的二维边界 vehicle,类型为 np.ndarray; 
     @staticmethod

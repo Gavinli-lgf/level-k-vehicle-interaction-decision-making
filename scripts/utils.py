@@ -110,23 +110,28 @@ class Node:
     MAX_LEVEL: int = 6          # 搜索树的最大深度(层级).当节点达到 MAX_LEVEL 时,被认为是终端节点。
     calc_value_callback = None  # 回调函数,用于计算节点的值(value).这个函数通常由外部传入,用于自定义节点的值计算逻辑。
 
-    # Node构造函数(输入数据: state, cur_level, parent, action, other_agent_state, goal_pos)
+    """
+    输入: state 该Node对应agent状态, level 节点在MCTS树中的第几层(等价于预测中的时间步,不同于level-k中的level), 
+         p 该节点的父节点, action 该Node对应的动作(由该动作生成的该节点), 
+         others 该时间步时其它对手agents的预测状态(每个agent一个状态,形成一个list), goal 该agent的目标状态(Node就属于某个agent)
+    功能: Node构造函数
+    """
     def __init__(self, state = State(), level = 0, p: Optional["Node"] = None,
                  action: Optional[Action] = None, others: StateList = StateList(),
                  goal: State = State()) -> None:
-        self.state: State = state           # Node的当前节点的状态
+        self.state: State = state           # 该Node对应agent状态
 
-        self.value: float = 0               # 从根节点到当前节点总的价值(giving back), (不是该点的及时奖励)
+        self.value: float = 0               # 从待simulation节点到当前节点的总代价(用于下一步Backpropagation)(不是该点的即时奖励)
         self.reward: float = 0              # 即时奖励值
         self.visits: int = 0                # 节点的访问次数
         self.action: Action = action        # 导致当前节点的动作
         self.parent: Node = p               # 父节点
-        self.cur_level: int = level         # 当前节点的层级，表示从根节点到当前节点的深度
+        self.cur_level: int = level         # 节点在MCTS树中的第几层(不同于level-k中的level)
         self.goal_pos: State = goal         # 目标状态(车辆想达到的终点状态)
 
         self.children: List[Node] = []      # 子节点列表(子节点个数最多等于动作序列个数,且区别于孙节点等)
         self.actions: List[Action] = []     # 动作列表(从根节点到当前节点的动作序列)
-        self.other_agent_state: StateList = others  # 其他车辆的当前状态列表(以列表的方式记录其它所有车辆当前状态,用于判碰,区别预测轨迹)
+        self.other_agent_state: StateList = others  # 该时间步时其它对手agents的预测状态(每个agent一个状态,形成一个list)
 
     # 如果当前节点的层级 cur_level 大于或等于 MAX_LEVEL,则认为当前节点是终端节点
     @property
@@ -154,7 +159,12 @@ class Node:
 
         return node
 
-    # 随机选择一个动作，从self.state生成一个节点.(与add_child()区别在于,该节点不记录父节点,即不生成树,用于MCTS的Simulation过程)
+    """
+    输入: delta_t simulation时间步长; 
+         others 所有对手agents在生成此next_node的时间步(也对应待生成node在tree中的层数)的状态(每个other agent一个状态,形成一个list)
+    输出: node 生成的next node
+    功能: 从self.state开始随机选择一个动作,生成下一个节点.(与add_child()区别在于,该节点不记录父节点,即不生成树,用于MCTS的Simulation过程)
+    """
     def next_node(self, delta_t: float, others: StateList = StateList()) -> "Node":
         next_action = random.choice(ActionList)
         new_state = kinematic_propagate(self.state, next_action.value, delta_t)
