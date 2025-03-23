@@ -90,14 +90,14 @@ def run(rounds_num:int, config_path:str, save_path:str, no_animation:bool, save_
 
             future_list: List[Future] = []  # 多进程同时执行多个agents的excute(),因此需要一个list存储每个agent的返回结果(Future)
             start_time = time.time()
-            # 提交每辆车的执行任务到进程池,异步执行每个任务,并获取结果。(vehicle.excute 执行具体的MCTS规划过程)
+            # 提交每辆车的执行任务到进程池,异步执行每个任务,并获取结果。(相当于每个agent都有一个单独的level-k规划器)
             for vehicle in vehicles:
                 # executor 进程池执行器，用于并行执行任务: vehicle.execute(vehicles.exclude(vehicle))
                 # 返回结果future是对异步任务的状态和结果的封装,可通过 Future.result() 获取最终结果(utils.Action, utils.StateList)
                 future = executor.submit(vehicle.excute, vehicles.exclude(vehicle))
                 future_list.append(future)
 
-            # 更新每辆车的当前动作和预期轨迹。()
+            # 更新每辆车的当前动作和预期轨迹。(相当于每个agent用自己的控制器执行自己单独的level-k规划器的结果)
             for vehicle, future in zip(vehicles, future_list):  # 将每个agent预期对应的返回结果对应起来,并遍历
                 # 获取 vehicle.excute()的返回结果(utils.Action, utils.StateList)
                 vehicle.cur_action, vehicle.excepted_traj = future.result() 
